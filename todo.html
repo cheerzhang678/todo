@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>待办事项</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4f7f6;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(168,210,190,0.25) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(176,196,222,0.2) 0%, transparent 55%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+  }
+  .container {
+    width: 100%;
+    max-width: 520px;
+  }
+  .card {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 16px;
+    padding: 32px 28px 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  }
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1.5px solid #dde4e2;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    background: rgba(255,255,255,0.7);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .input-row input:focus { border-color: #6b9e8a; box-shadow: 0 0 0 3px rgba(107,158,138,0.12); }
+  .input-row select {
+    padding: 12px 10px;
+    border: 1.5px solid #dde4e2;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    background: rgba(255,255,255,0.7);
+    transition: border-color .2s;
+  }
+  .input-row select:focus { border-color: #6b9e8a; }
+  .input-row button {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #6b9e8a, #5a8f7b);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform .15s, box-shadow .2s;
+  }
+  .input-row button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(107,158,138,0.3); }
+
+  /* 进度条 */
+  .progress-wrap {
+    margin-bottom: 20px;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #7a8f85;
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 8px;
+    background: rgba(107,158,138,0.12);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #6b9e8a, #8ec5ad);
+    transition: width .4s ease;
+  }
+
+  /* 优先级标签 */
+  .priority-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+    line-height: 18px;
+  }
+  .priority-high   { background: #fce8e6; color: #c0392b; }
+  .priority-medium { background: #fef5e7; color: #d4910a; }
+  .priority-low    { background: #e8f6f0; color: #1e8a5c; }
+
+  .filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .filters button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(107,158,138,0.08);
+    color: #6b8a7e;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .filters button.active {
+    background: #6b9e8a;
+    color: #fff;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #8a9e95;
+  }
+  .stats .clear-btn {
+    background: none;
+    border: none;
+    color: #c0392b;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .stats .clear-btn:hover { text-decoration: underline; }
+
+  .todo-list { list-style: none; }
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.55);
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: opacity .2s, transform .2s, background .2s;
+    animation: slideIn .25s ease;
+    border-left: 4px solid transparent;
+  }
+  .todo-item:hover { background: rgba(255,255,255,0.8); }
+  .todo-item.border-high   { border-left-color: #c0392b; }
+  .todo-item.border-medium { border-left-color: #d4910a; }
+  .todo-item.border-low    { border-left-color: #1e8a5c; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .todo-item.done .todo-text {
+    text-decoration: line-through;
+    color: #b0bfb8;
+  }
+
+  .checkbox {
+    width: 20px; height: 20px;
+    border: 2px solid #c0d1c8;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+  .checkbox:hover { border-color: #6b9e8a; }
+  .todo-item.done .checkbox {
+    background: #6b9e8a;
+    border-color: #6b9e8a;
+  }
+  .todo-item.done .checkbox::after {
+    content: '';
+    width: 6px; height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
+  .todo-text {
+    flex: 1;
+    font-size: 15px;
+    color: #3a4a42;
+    word-break: break-word;
+  }
+
+  .edit-input {
+    flex: 1;
+    border: none;
+    border-bottom: 2px solid #6b9e8a;
+    outline: none;
+    font-size: 15px;
+    padding: 2px 0;
+    background: transparent;
+    color: #3a4a42;
+  }
+
+  .actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity .2s, background .2s;
+  }
+  .todo-item:hover .actions button { opacity: 1; }
+  .actions button:hover { background: rgba(107,158,138,0.1); }
+
+  .empty {
+    text-align: center;
+    color: #a8bfb3;
+    padding: 40px 0;
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>待办事项</h1>
+  <div class="card">
+  <div class="input-row">
+    <input id="todoInput" type="text" placeholder="输入新的待办事项..." autofocus>
+    <select id="prioritySelect">
+      <option value="high">高优先级</option>
+      <option value="medium" selected>中优先级</option>
+      <option value="low">低优先级</option>
+    </select>
+    <button onclick="addTodo()">添加</button>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <span id="progressLabel">完成进度</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="filters">
+    <button class="active" data-filter="all" onclick="setFilter('all', this)">全部</button>
+    <button data-filter="active" onclick="setFilter('active', this)">未完成</button>
+    <button data-filter="done" onclick="setFilter('done', this)">已完成</button>
+  </div>
+  <div class="stats">
+    <span id="statsText"></span>
+    <button class="clear-btn" onclick="clearDone()">清除已完成</button>
+  </div>
+  <ul class="todo-list" id="todoList"></ul>
+  <div class="empty" id="emptyTip">暂无待办事项</div>
+  </div>
+</div>
+
+<script>
+let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+let filter = 'all';
+
+const input = document.getElementById('todoInput');
+const prioritySelect = document.getElementById('prioritySelect');
+const list = document.getElementById('todoList');
+const emptyTip = document.getElementById('emptyTip');
+const statsText = document.getElementById('statsText');
+const progressFill = document.getElementById('progressFill');
+const progressPct = document.getElementById('progressPct');
+const progressLabel = document.getElementById('progressLabel');
+
+input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+function save() {
+  localStorage.setItem('todos', JSON.stringify(todos));
+}
+
+function addTodo() {
+  const text = input.value.trim();
+  if (!text) return;
+  const priority = prioritySelect.value;
+  todos.unshift({ id: Date.now(), text, done: false, priority });
+  input.value = '';
+  save();
+  render();
+}
+
+function toggleTodo(id) {
+  const t = todos.find(t => t.id === id);
+  if (t) t.done = !t.done;
+  save();
+  render();
+}
+
+function deleteTodo(id) {
+  todos = todos.filter(t => t.id !== id);
+  save();
+  render();
+}
+
+function startEdit(id) {
+  render(id);
+}
+
+function finishEdit(id, newText) {
+  const t = todos.find(t => t.id === id);
+  if (t) {
+    const trimmed = newText.trim();
+    if (trimmed) t.text = trimmed;
+  }
+  save();
+  render();
+}
+
+function clearDone() {
+  todos = todos.filter(t => !t.done);
+  save();
+  render();
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function render(editingId) {
+  const filtered = todos.filter(t => {
+    if (filter === 'active') return !t.done;
+    if (filter === 'done') return t.done;
+    return true;
+  });
+
+  const doneCount = todos.filter(t => t.done).length;
+  const activeCount = todos.length - doneCount;
+  statsText.textContent = `共 ${todos.length} 项，${activeCount} 项未完成`;
+
+  // 进度条
+  const pct = todos.length ? Math.round(doneCount / todos.length * 100) : 0;
+  progressFill.style.width = pct + '%';
+  progressPct.textContent = pct + '%';
+  progressLabel.textContent = `完成进度 ${doneCount}/${todos.length}`;
+
+  emptyTip.style.display = filtered.length ? 'none' : 'block';
+
+  const priorityLabels = { high: '高', medium: '中', low: '低' };
+
+  list.innerHTML = filtered.map(t => {
+    const p = t.priority || 'medium';
+    const isEditing = t.id === editingId;
+    return `<li class="todo-item${t.done ? ' done' : ''} border-${p}">
+      <div class="checkbox" onclick="toggleTodo(${t.id})"></div>
+      <span class="priority-tag priority-${p}">${priorityLabels[p]}</span>
+      ${isEditing
+        ? `<input class="edit-input" value="${t.text.replace(/"/g, '&quot;')}"
+            onblur="finishEdit(${t.id}, this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()"
+            autofocus>`
+        : `<span class="todo-text" ondblclick="startEdit(${t.id})">${escHtml(t.text)}</span>`
+      }
+      <div class="actions">
+        <button onclick="startEdit(${t.id})" title="编辑">&#9998;</button>
+        <button onclick="deleteTodo(${t.id})" title="删除">&#10005;</button>
+      </div>
+    </li>`;
+  }).join('');
+
+  if (editingId) {
+    const inp = list.querySelector('.edit-input');
+    if (inp) { inp.focus(); inp.selectionStart = inp.value.length; }
+  }
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+render();
+</script>
+</body>
+</html>
