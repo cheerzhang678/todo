@@ -3,386 +3,555 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>待办事项</title>
+<title>待办日历</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f4f7f6;
-    background-image:
-      radial-gradient(ellipse at 20% 0%, rgba(168,210,190,0.25) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 100%, rgba(176,196,222,0.2) 0%, transparent 55%);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    padding: 48px 16px;
-  }
-  .container {
-    width: 100%;
-    max-width: 520px;
-  }
-  .card {
-    background: rgba(255,255,255,0.72);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255,255,255,0.5);
-    border-radius: 16px;
-    padding: 32px 28px 28px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-  }
-  h1 {
-    text-align: center;
-    color: #2c3e50;
-    font-size: 26px;
-    font-weight: 700;
-    margin-bottom: 24px;
-    letter-spacing: 1px;
-  }
-  .input-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .input-row input {
-    flex: 1;
-    padding: 12px 16px;
-    border: 1.5px solid #dde4e2;
-    border-radius: 10px;
-    font-size: 15px;
-    outline: none;
-    background: rgba(255,255,255,0.7);
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .input-row input:focus { border-color: #6b9e8a; box-shadow: 0 0 0 3px rgba(107,158,138,0.12); }
-  .input-row select {
-    padding: 12px 10px;
-    border: 1.5px solid #dde4e2;
-    border-radius: 10px;
-    font-size: 14px;
-    outline: none;
-    cursor: pointer;
-    background: rgba(255,255,255,0.7);
-    transition: border-color .2s;
-  }
-  .input-row select:focus { border-color: #6b9e8a; }
-  .input-row button {
-    padding: 12px 20px;
-    background: linear-gradient(135deg, #6b9e8a, #5a8f7b);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: transform .15s, box-shadow .2s;
-  }
-  .input-row button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(107,158,138,0.3); }
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f4f7f6;
+  background-image:
+    radial-gradient(ellipse at 20% 0%,rgba(168,210,190,.25) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 100%,rgba(176,196,222,.2) 0%,transparent 55%);
+  min-height:100vh;
+  display:flex;justify-content:center;
+  padding:32px 12px;
+}
+.container{width:100%;max-width:760px}
 
-  /* 进度条 */
-  .progress-wrap {
-    margin-bottom: 20px;
-  }
-  .progress-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: #7a8f85;
-    margin-bottom: 6px;
-  }
-  .progress-bar {
-    height: 8px;
-    background: rgba(107,158,138,0.12);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    border-radius: 4px;
-    background: linear-gradient(90deg, #6b9e8a, #8ec5ad);
-    transition: width .4s ease;
-  }
+/* header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.header h1{font-size:24px;color:#2c3e50;font-weight:700;letter-spacing:.5px}
+.cat-tabs{display:flex;gap:4px}
+.cat-tabs button{
+  padding:6px 14px;border:none;border-radius:8px;font-size:13px;
+  background:rgba(107,158,138,.08);color:#6b8a7e;cursor:pointer;transition:all .2s;
+}
+.cat-tabs button.active{background:#6b9e8a;color:#fff}
 
-  /* 优先级标签 */
-  .priority-tag {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-weight: 600;
-    flex-shrink: 0;
-    line-height: 18px;
-  }
-  .priority-high   { background: #fce8e6; color: #c0392b; }
-  .priority-medium { background: #fef5e7; color: #d4910a; }
-  .priority-low    { background: #e8f6f0; color: #1e8a5c; }
+/* card */
+.card{
+  background:rgba(255,255,255,.72);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.5);
+  border-radius:16px;padding:24px 22px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);
+  margin-bottom:16px;
+}
 
-  .filters {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-  .filters button {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    border-radius: 8px;
-    background: rgba(107,158,138,0.08);
-    color: #6b8a7e;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all .2s;
-  }
-  .filters button.active {
-    background: #6b9e8a;
-    color: #fff;
-  }
+/* nav bar */
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.view-tabs{display:flex;gap:4px}
+.view-tabs button{
+  padding:6px 16px;border:none;border-radius:8px;font-size:13px;
+  background:rgba(107,158,138,.08);color:#6b8a7e;cursor:pointer;transition:all .2s;
+}
+.view-tabs button.active{background:#6b9e8a;color:#fff}
+.nav-mid{display:flex;align-items:center;gap:12px}
+.nav-mid .arr{
+  background:none;border:none;font-size:18px;cursor:pointer;color:#5a7a6e;
+  padding:4px 8px;border-radius:6px;transition:background .2s;
+}
+.nav-mid .arr:hover{background:rgba(107,158,138,.12)}
+.nav-mid .label{font-size:15px;font-weight:600;color:#3a4a42;min-width:140px;text-align:center}
+.nav .today-btn{
+  padding:5px 12px;border:1px solid #6b9e8a;border-radius:8px;font-size:12px;
+  background:transparent;color:#6b9e8a;cursor:pointer;transition:all .2s;
+}
+.nav .today-btn:hover{background:#6b9e8a;color:#fff}
 
-  .stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 13px;
-    color: #8a9e95;
-  }
-  .stats .clear-btn {
-    background: none;
-    border: none;
-    color: #c0392b;
-    cursor: pointer;
-    font-size: 13px;
-  }
-  .stats .clear-btn:hover { text-decoration: underline; }
+/* calendar grids */
+.cal-area{min-height:200px;margin-bottom:16px}
 
-  .todo-list { list-style: none; }
-  .todo-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(255,255,255,0.55);
-    padding: 14px 16px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    transition: opacity .2s, transform .2s, background .2s;
-    animation: slideIn .25s ease;
-    border-left: 4px solid transparent;
-  }
-  .todo-item:hover { background: rgba(255,255,255,0.8); }
-  .todo-item.border-high   { border-left-color: #c0392b; }
-  .todo-item.border-medium { border-left-color: #d4910a; }
-  .todo-item.border-low    { border-left-color: #1e8a5c; }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .todo-item.done .todo-text {
-    text-decoration: line-through;
-    color: #b0bfb8;
-  }
+/* month view */
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.month-grid .wday{text-align:center;font-size:12px;color:#8a9e95;padding:4px 0 8px;font-weight:600}
+.month-grid .day-cell{
+  min-height:48px;border-radius:8px;padding:4px 6px;cursor:pointer;
+  transition:background .15s;position:relative;font-size:13px;color:#3a4a42;
+}
+.month-grid .day-cell:hover{background:rgba(107,158,138,.08)}
+.month-grid .day-cell.today{background:rgba(107,158,138,.12);font-weight:700}
+.month-grid .day-cell.selected{background:rgba(107,158,138,.22);font-weight:700}
+.month-grid .day-cell.other{color:#c5d0ca}
+.day-dots{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.day-dots .dot{width:6px;height:6px;border-radius:50%}
+.dot-P0{background:#c0392b}.dot-P1{background:#d4910a}.dot-P2{background:#1e8a5c}
 
-  .checkbox {
-    width: 20px; height: 20px;
-    border: 2px solid #c0d1c8;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all .2s;
-  }
-  .checkbox:hover { border-color: #6b9e8a; }
-  .todo-item.done .checkbox {
-    background: #6b9e8a;
-    border-color: #6b9e8a;
-  }
-  .todo-item.done .checkbox::after {
-    content: '';
-    width: 6px; height: 10px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg) translate(-1px, -1px);
-  }
+/* week view */
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week-col{min-height:120px}
+.week-col .wk-header{
+  text-align:center;font-size:12px;color:#8a9e95;padding:6px 0;font-weight:600;
+  border-bottom:1px solid rgba(107,158,138,.12);margin-bottom:6px;
+}
+.week-col .wk-header.today{color:#6b9e8a}
+.week-col .wk-date{font-size:16px;font-weight:700;color:#3a4a42;display:block}
+.week-col .wk-date.today{
+  background:#6b9e8a;color:#fff;width:28px;height:28px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.wk-item{
+  font-size:11px;padding:3px 5px;border-radius:4px;margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+  border-left:3px solid transparent;background:rgba(255,255,255,.6);
+}
+.wk-item.p-P0{border-left-color:#c0392b}.wk-item.p-P1{border-left-color:#d4910a}.wk-item.p-P2{border-left-color:#1e8a5c}
+.wk-item.done{text-decoration:line-through;opacity:.5}
 
-  .todo-text {
-    flex: 1;
-    font-size: 15px;
-    color: #3a4a42;
-    word-break: break-word;
-  }
+/* day view */
+.day-view-title{font-size:15px;color:#5a7a6e;margin-bottom:10px;font-weight:600}
 
-  .edit-input {
-    flex: 1;
-    border: none;
-    border-bottom: 2px solid #6b9e8a;
-    outline: none;
-    font-size: 15px;
-    padding: 2px 0;
-    background: transparent;
-    color: #3a4a42;
-  }
+/* year view */
+.year-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.year-month{
+  border-radius:10px;padding:12px;cursor:pointer;text-align:center;
+  transition:background .15s;background:rgba(255,255,255,.4);
+}
+.year-month:hover{background:rgba(107,158,138,.1)}
+.year-month .ym-name{font-size:14px;font-weight:600;color:#3a4a42;margin-bottom:4px}
+.year-month .ym-count{font-size:22px;font-weight:700}
+.year-month .ym-label{font-size:11px;color:#8a9e95}
+.ym-heat-0{color:#c5d0ca}.ym-heat-1{color:#8ec5ad}.ym-heat-2{color:#6b9e8a}.ym-heat-3{color:#4a8a6e}.ym-heat-4{color:#2e7255}
 
-  .actions { display: flex; gap: 4px; flex-shrink: 0; }
-  .actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 6px;
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity .2s, background .2s;
-  }
-  .todo-item:hover .actions button { opacity: 1; }
-  .actions button:hover { background: rgba(107,158,138,0.1); }
+/* todo list */
+.todo-section-title{font-size:13px;color:#8a9e95;margin-bottom:8px;font-weight:600}
+.todo-list{list-style:none}
+.todo-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.55);padding:12px 14px;border-radius:10px;
+  margin-bottom:6px;box-shadow:0 1px 4px rgba(0,0,0,.04);
+  transition:background .2s;animation:slideIn .25s ease;border-left:4px solid transparent;
+}
+.todo-item:hover{background:rgba(255,255,255,.8)}
+.todo-item.border-P0{border-left-color:#c0392b}
+.todo-item.border-P1{border-left-color:#d4910a}
+.todo-item.border-P2{border-left-color:#1e8a5c}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.todo-item.done .todo-text{text-decoration:line-through;color:#b0bfb8}
 
-  .empty {
-    text-align: center;
-    color: #a8bfb3;
-    padding: 40px 0;
-    font-size: 15px;
-  }
+.checkbox{
+  width:20px;height:20px;border:2px solid #c0d1c8;border-radius:50%;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;
+}
+.checkbox:hover{border-color:#6b9e8a}
+.todo-item.done .checkbox{background:#6b9e8a;border-color:#6b9e8a}
+.todo-item.done .checkbox::after{
+  content:'';width:6px;height:10px;border:solid #fff;border-width:0 2px 2px 0;
+  transform:rotate(45deg) translate(-1px,-1px);
+}
+
+.priority-tag{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;line-height:18px}
+.priority-P0{background:#fce8e6;color:#c0392b}
+.priority-P1{background:#fef5e7;color:#d4910a}
+.priority-P2{background:#e8f6f0;color:#1e8a5c}
+
+.cat-tag{font-size:11px;padding:2px 7px;border-radius:10px;flex-shrink:0;line-height:18px;font-weight:500}
+.cat-work{background:#e8edf6;color:#4a6fa5}
+.cat-life{background:#f5eef8;color:#8e5ea2}
+
+.todo-text{flex:1;font-size:14px;color:#3a4a42;word-break:break-word}
+.edit-input{flex:1;border:none;border-bottom:2px solid #6b9e8a;outline:none;font-size:14px;padding:2px 0;background:transparent;color:#3a4a42}
+
+.actions{display:flex;gap:2px;flex-shrink:0}
+.actions button{background:none;border:none;cursor:pointer;font-size:15px;padding:3px 5px;border-radius:4px;opacity:0;transition:opacity .2s,background .2s}
+.todo-item:hover .actions button{opacity:1}
+.actions button:hover{background:rgba(107,158,138,.1)}
+
+.empty{text-align:center;color:#a8bfb3;padding:30px 0;font-size:14px}
+
+/* progress */
+.progress-wrap{margin-bottom:16px}
+.progress-header{display:flex;justify-content:space-between;font-size:12px;color:#7a8f85;margin-bottom:5px}
+.progress-bar{height:7px;background:rgba(107,158,138,.12);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#6b9e8a,#8ec5ad);transition:width .4s ease}
+
+/* add form */
+.add-form{display:flex;gap:6px;flex-wrap:wrap}
+.add-form input[type=text]{
+  flex:1;min-width:140px;padding:10px 14px;border:1.5px solid #dde4e2;border-radius:10px;
+  font-size:14px;outline:none;background:rgba(255,255,255,.7);transition:border-color .2s,box-shadow .2s;
+}
+.add-form input[type=text]:focus{border-color:#6b9e8a;box-shadow:0 0 0 3px rgba(107,158,138,.12)}
+.add-form input[type=date]{
+  padding:10px 8px;border:1.5px solid #dde4e2;border-radius:10px;font-size:13px;
+  outline:none;background:rgba(255,255,255,.7);color:#3a4a42;
+}
+.add-form select{
+  padding:10px 8px;border:1.5px solid #dde4e2;border-radius:10px;font-size:13px;
+  outline:none;cursor:pointer;background:rgba(255,255,255,.7);
+}
+.add-form button{
+  padding:10px 18px;background:linear-gradient(135deg,#6b9e8a,#5a8f7b);color:#fff;
+  border:none;border-radius:10px;font-size:14px;cursor:pointer;white-space:nowrap;
+  transition:transform .15s,box-shadow .2s;
+}
+.add-form button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(107,158,138,.3)}
+
+/* stats row */
+.stats-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;color:#8a9e95}
+.clear-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px}
+.clear-btn:hover{text-decoration:underline}
+
+/* filters */
+.filter-tabs{display:flex;gap:4px;margin-bottom:12px}
+.filter-tabs button{
+  padding:5px 12px;border:none;border-radius:8px;font-size:12px;
+  background:rgba(107,158,138,.08);color:#6b8a7e;cursor:pointer;transition:all .2s;
+}
+.filter-tabs button.active{background:#6b9e8a;color:#fff}
+
+/* responsive */
+@media(max-width:600px){
+  .week-grid{grid-template-columns:repeat(7,1fr);gap:3px}
+  .wk-item{font-size:10px;padding:2px 3px}
+  .year-grid{grid-template-columns:repeat(3,1fr)}
+  .add-form{flex-direction:column}
+  .add-form input[type=text]{min-width:auto}
+  .nav{gap:6px}
+}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>待办事项</h1>
+  <!-- Header -->
+  <div class="header">
+    <h1>待办日历</h1>
+    <div class="cat-tabs" id="catTabs">
+      <button class="active" onclick="setCat('all',this)">全部</button>
+      <button onclick="setCat('work',this)">工作</button>
+      <button onclick="setCat('life',this)">生活</button>
+    </div>
+  </div>
+
+  <!-- Calendar Card -->
   <div class="card">
-  <div class="input-row">
-    <input id="todoInput" type="text" placeholder="输入新的待办事项..." autofocus>
-    <select id="prioritySelect">
-      <option value="high">高优先级</option>
-      <option value="medium" selected>中优先级</option>
-      <option value="low">低优先级</option>
-    </select>
-    <button onclick="addTodo()">添加</button>
-  </div>
-  <div class="progress-wrap">
-    <div class="progress-header">
-      <span id="progressLabel">完成进度</span>
-      <span id="progressPct">0%</span>
+    <div class="nav">
+      <div class="view-tabs" id="viewTabs">
+        <button onclick="setView('day',this)">日</button>
+        <button onclick="setView('week',this)">周</button>
+        <button class="active" onclick="setView('month',this)">月</button>
+        <button onclick="setView('year',this)">年</button>
+      </div>
+      <div class="nav-mid">
+        <button class="arr" onclick="goPrev()">&#8249;</button>
+        <span class="label" id="navLabel"></span>
+        <button class="arr" onclick="goNext()">&#8250;</button>
+      </div>
+      <button class="today-btn" onclick="goToday()">今天</button>
     </div>
-    <div class="progress-bar">
-      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    <div class="cal-area" id="calArea"></div>
+  </div>
+
+  <!-- Todo List Card -->
+  <div class="card">
+    <div class="todo-section-title" id="listTitle">待办事项</div>
+    <div class="progress-wrap">
+      <div class="progress-header">
+        <span id="progressLabel">完成进度</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
     </div>
+    <div class="filter-tabs">
+      <button class="active" onclick="setStatus('all',this)">全部</button>
+      <button onclick="setStatus('active',this)">未完成</button>
+      <button onclick="setStatus('done',this)">已完成</button>
+    </div>
+    <div class="stats-row">
+      <span id="statsText"></span>
+      <button class="clear-btn" onclick="clearDone()">清除已完成</button>
+    </div>
+    <ul class="todo-list" id="todoList"></ul>
+    <div class="empty" id="emptyTip">暂无待办事项</div>
   </div>
-  <div class="filters">
-    <button class="active" data-filter="all" onclick="setFilter('all', this)">全部</button>
-    <button data-filter="active" onclick="setFilter('active', this)">未完成</button>
-    <button data-filter="done" onclick="setFilter('done', this)">已完成</button>
-  </div>
-  <div class="stats">
-    <span id="statsText"></span>
-    <button class="clear-btn" onclick="clearDone()">清除已完成</button>
-  </div>
-  <ul class="todo-list" id="todoList"></ul>
-  <div class="empty" id="emptyTip">暂无待办事项</div>
+
+  <!-- Add Form Card -->
+  <div class="card">
+    <div class="add-form">
+      <input type="text" id="todoInput" placeholder="输入新的待办事项..." autofocus>
+      <input type="date" id="dateInput">
+      <select id="prioritySelect">
+        <option value="P0">P0</option>
+        <option value="P1" selected>P1</option>
+        <option value="P2">P2</option>
+      </select>
+      <select id="catSelect">
+        <option value="work">工作</option>
+        <option value="life">生活</option>
+      </select>
+      <button onclick="addTodo()">添加</button>
+    </div>
   </div>
 </div>
 
 <script>
-let todos = JSON.parse(localStorage.getItem('todos') || '[]');
-let filter = 'all';
-
-const input = document.getElementById('todoInput');
-const prioritySelect = document.getElementById('prioritySelect');
-const list = document.getElementById('todoList');
-const emptyTip = document.getElementById('emptyTip');
-const statsText = document.getElementById('statsText');
-const progressFill = document.getElementById('progressFill');
-const progressPct = document.getElementById('progressPct');
-const progressLabel = document.getElementById('progressLabel');
-
-input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
-
-function save() {
-  localStorage.setItem('todos', JSON.stringify(todos));
-}
-
-function addTodo() {
-  const text = input.value.trim();
-  if (!text) return;
-  const priority = prioritySelect.value;
-  todos.unshift({ id: Date.now(), text, done: false, priority });
-  input.value = '';
-  save();
-  render();
-}
-
-function toggleTodo(id) {
-  const t = todos.find(t => t.id === id);
-  if (t) t.done = !t.done;
-  save();
-  render();
-}
-
-function deleteTodo(id) {
-  todos = todos.filter(t => t.id !== id);
-  save();
-  render();
-}
-
-function startEdit(id) {
-  render(id);
-}
-
-function finishEdit(id, newText) {
-  const t = todos.find(t => t.id === id);
-  if (t) {
-    const trimmed = newText.trim();
-    if (trimmed) t.text = trimmed;
+// ---- State ----
+let todos = JSON.parse(localStorage.getItem('todos_v2') || '[]');
+// Migrate old data
+if (!todos.length) {
+  const old = JSON.parse(localStorage.getItem('todos') || '[]');
+  if (old.length) {
+    todos = old.map(t => ({
+      ...t,
+      priority: t.priority === 'high' ? 'P0' : t.priority === 'low' ? 'P2' : 'P1',
+      category: t.category || 'work',
+      date: t.date || fmtDate(new Date())
+    }));
+    save();
   }
-  save();
-  render();
 }
 
+let viewMode = 'month'; // day|week|month|year
+let selectedDate = new Date();
+let viewAnchor = new Date(); // controls what period is shown
+let catFilter = 'all'; // all|work|life
+let statusFilter = 'all'; // all|active|done
+
+const $ = id => document.getElementById(id);
+const todoInput = $('todoInput');
+const dateInput = $('dateInput');
+const prioritySelect = $('prioritySelect');
+const catSelect = $('catSelect');
+
+todoInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+function fmtDate(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function parseDate(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); }
+function isSameDay(a,b) { return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function todayStr() { return fmtDate(new Date()); }
+
+function save() { localStorage.setItem('todos_v2', JSON.stringify(todos)); }
+
+// ---- Filters ----
+function filtered(list) {
+  return list.filter(t => {
+    if (catFilter !== 'all' && t.category !== catFilter) return false;
+    if (statusFilter === 'active' && t.done) return false;
+    if (statusFilter === 'done' && !t.done) return false;
+    return true;
+  });
+}
+function byDate(dateStr) { return todos.filter(t => t.date === dateStr); }
+function byDateRange(start, end) {
+  const s = fmtDate(start), e = fmtDate(end);
+  return todos.filter(t => t.date >= s && t.date <= e);
+}
+function byMonth(y, m) {
+  const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
+  return todos.filter(t => t.date.startsWith(prefix));
+}
+function byYear(y) { return todos.filter(t => t.date.startsWith(String(y))); }
+
+// ---- Actions ----
+function addTodo() {
+  const text = todoInput.value.trim();
+  if (!text) return;
+  todos.unshift({
+    id: Date.now(), text, done: false,
+    priority: prioritySelect.value,
+    category: catSelect.value,
+    date: dateInput.value || fmtDate(selectedDate)
+  });
+  todoInput.value = '';
+  save(); render();
+}
+function toggleTodo(id) { const t=todos.find(x=>x.id===id); if(t) t.done=!t.done; save(); render(); }
+function deleteTodo(id) { todos=todos.filter(x=>x.id!==id); save(); render(); }
+function startEdit(id) { renderList(id); }
+function finishEdit(id, val) {
+  const t=todos.find(x=>x.id===id);
+  if(t){ const v=val.trim(); if(v) t.text=v; }
+  save(); renderList();
+}
 function clearDone() {
-  todos = todos.filter(t => !t.done);
-  save();
-  render();
+  const ds = fmtDate(selectedDate);
+  todos = todos.filter(t => !(t.done && t.date === ds));
+  save(); render();
 }
 
-function setFilter(f, btn) {
-  filter = f;
-  document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+// ---- View switching ----
+function setView(v, btn) {
+  viewMode = v;
+  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  viewAnchor = new Date(selectedDate);
+  render();
+}
+function setCat(c, btn) {
+  catFilter = c;
+  document.querySelectorAll('#catTabs button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   render();
 }
+function setStatus(s, btn) {
+  statusFilter = s;
+  document.querySelectorAll('.filter-tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+function goToday() { selectedDate=new Date(); viewAnchor=new Date(); render(); }
+function goPrev() {
+  if (viewMode==='day') viewAnchor.setDate(viewAnchor.getDate()-1);
+  else if (viewMode==='week') viewAnchor.setDate(viewAnchor.getDate()-7);
+  else if (viewMode==='month') viewAnchor.setMonth(viewAnchor.getMonth()-1);
+  else viewAnchor.setFullYear(viewAnchor.getFullYear()-1);
+  selectedDate = new Date(viewAnchor);
+  render();
+}
+function goNext() {
+  if (viewMode==='day') viewAnchor.setDate(viewAnchor.getDate()+1);
+  else if (viewMode==='week') viewAnchor.setDate(viewAnchor.getDate()+7);
+  else if (viewMode==='month') viewAnchor.setMonth(viewAnchor.getMonth()+1);
+  else viewAnchor.setFullYear(viewAnchor.getFullYear()+1);
+  selectedDate = new Date(viewAnchor);
+  render();
+}
+function selectDay(dateStr) {
+  selectedDate = parseDate(dateStr);
+  viewAnchor = new Date(selectedDate);
+  render();
+}
 
-function render(editingId) {
-  const filtered = todos.filter(t => {
-    if (filter === 'active') return !t.done;
-    if (filter === 'done') return t.done;
-    return true;
-  });
+// ---- Nav label ----
+const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const WDAYS = ['日','一','二','三','四','五','六'];
+function updateNavLabel() {
+  const a = viewAnchor;
+  let label = '';
+  if (viewMode==='day') label = `${a.getFullYear()}年${a.getMonth()+1}月${a.getDate()}日 周${WDAYS[a.getDay()]}`;
+  else if (viewMode==='week') {
+    const ws = weekStart(a), we = new Date(ws); we.setDate(we.getDate()+6);
+    label = `${ws.getMonth()+1}月${ws.getDate()}日 - ${we.getMonth()+1}月${we.getDate()}日`;
+  }
+  else if (viewMode==='month') label = `${a.getFullYear()}年${a.getMonth()+1}月`;
+  else label = `${a.getFullYear()}年`;
+  $('navLabel').textContent = label;
+}
 
-  const doneCount = todos.filter(t => t.done).length;
-  const activeCount = todos.length - doneCount;
-  statsText.textContent = `共 ${todos.length} 项，${activeCount} 项未完成`;
+// ---- Calendar renders ----
+function weekStart(d) { const r=new Date(d); r.setDate(r.getDate()-r.getDay()); return r; }
 
-  // 进度条
-  const pct = todos.length ? Math.round(doneCount / todos.length * 100) : 0;
-  progressFill.style.width = pct + '%';
-  progressPct.textContent = pct + '%';
-  progressLabel.textContent = `完成进度 ${doneCount}/${todos.length}`;
+function renderCal() {
+  updateNavLabel();
+  const area = $('calArea');
+  if (viewMode==='month') renderMonth(area);
+  else if (viewMode==='week') renderWeek(area);
+  else if (viewMode==='day') renderDay(area);
+  else renderYear(area);
+}
 
-  emptyTip.style.display = filtered.length ? 'none' : 'block';
+function renderMonth(area) {
+  const y=viewAnchor.getFullYear(), m=viewAnchor.getMonth();
+  const first=new Date(y,m,1), last=new Date(y,m+1,0);
+  const startDay=first.getDay();
+  const today=todayStr(), selStr=fmtDate(selectedDate);
 
-  const priorityLabels = { high: '高', medium: '中', low: '低' };
+  let html='<div class="month-grid">';
+  WDAYS.forEach(w=> html+=`<div class="wday">${w}</div>`);
 
-  list.innerHTML = filtered.map(t => {
-    const p = t.priority || 'medium';
-    const isEditing = t.id === editingId;
-    return `<li class="todo-item${t.done ? ' done' : ''} border-${p}">
+  // cells
+  const startDate=new Date(first); startDate.setDate(startDate.getDate()-startDay);
+  for(let i=0;i<42;i++){
+    const cur=new Date(startDate); cur.setDate(startDate.getDate()+i);
+    const ds=fmtDate(cur);
+    const isOther=cur.getMonth()!==m;
+    const isToday=ds===today;
+    const isSel=ds===selStr;
+    let cls='day-cell';
+    if(isOther) cls+=' other';
+    if(isToday) cls+=' today';
+    if(isSel) cls+=' selected';
+
+    const dayTodos=filtered(byDate(ds));
+    let dots='';
+    if(dayTodos.length){
+      dots='<div class="day-dots">';
+      dayTodos.slice(0,5).forEach(t=> dots+=`<span class="dot dot-${t.priority}"></span>`);
+      if(dayTodos.length>5) dots+=`<span style="font-size:10px;color:#8a9e95">+${dayTodos.length-5}</span>`;
+      dots+='</div>';
+    }
+    html+=`<div class="${cls}" onclick="selectDay('${ds}')">${cur.getDate()}${dots}</div>`;
+  }
+  html+='</div>';
+  area.innerHTML=html;
+}
+
+function renderWeek(area) {
+  const ws=weekStart(viewAnchor);
+  const today=todayStr(), selStr=fmtDate(selectedDate);
+  let html='<div class="week-grid">';
+  for(let i=0;i<7;i++){
+    const cur=new Date(ws); cur.setDate(ws.getDate()+i);
+    const ds=fmtDate(cur);
+    const isToday=ds===today;
+    html+=`<div class="week-col" onclick="selectDay('${ds}')">`;
+    html+=`<div class="wk-header${isToday?' today':''}">周${WDAYS[i]}<br>`;
+    html+=`<span class="wk-date${isToday?' today':''}">${cur.getDate()}</span></div>`;
+    const dayTodos=filtered(byDate(ds));
+    dayTodos.slice(0,4).forEach(t=>{
+      html+=`<div class="wk-item p-${t.priority}${t.done?' done':''}">${escHtml(t.text)}</div>`;
+    });
+    if(dayTodos.length>4) html+=`<div style="font-size:10px;color:#8a9e95;text-align:center">+${dayTodos.length-4}项</div>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+}
+
+function renderDay(area) {
+  const ds=fmtDate(viewAnchor);
+  area.innerHTML=`<div class="day-view-title">${viewAnchor.getMonth()+1}月${viewAnchor.getDate()}日 周${WDAYS[viewAnchor.getDay()]}的待办</div>`;
+}
+
+function renderYear(area) {
+  const y=viewAnchor.getFullYear();
+  let html='<div class="year-grid">';
+  for(let m=0;m<12;m++){
+    const mt=filtered(byMonth(y,m));
+    const total=mt.length;
+    const done=mt.filter(t=>t.done).length;
+    const heat=total===0?0:total<=3?1:total<=8?2:total<=15?3:4;
+    html+=`<div class="year-month" onclick="viewAnchor=new Date(${y},${m},1);selectedDate=new Date(${y},${m},1);setView('month',document.querySelectorAll('#viewTabs button')[2])">`;
+    html+=`<div class="ym-name">${MONTHS[m]}</div>`;
+    html+=`<div class="ym-count ym-heat-${heat}">${total}</div>`;
+    html+=`<div class="ym-label">${done}已完成</div>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+}
+
+// ---- Todo list ----
+function renderList(editingId) {
+  const ds=fmtDate(selectedDate);
+  const dayTodos=byDate(ds);
+  const list=filtered(dayTodos);
+  const doneCount=dayTodos.filter(t=>t.done).length;
+  const total=dayTodos.length;
+
+  $('listTitle').textContent=`${selectedDate.getMonth()+1}月${selectedDate.getDate()}日 待办事项`;
+  const pct=total?Math.round(doneCount/total*100):0;
+  $('progressFill').style.width=pct+'%';
+  $('progressPct').textContent=pct+'%';
+  $('progressLabel').textContent=`完成进度 ${doneCount}/${total}`;
+  $('statsText').textContent=`共 ${total} 项，${total-doneCount} 项未完成`;
+  $('emptyTip').style.display=list.length?'none':'block';
+
+  const catLabels={work:'工作',life:'生活'};
+  $('todoList').innerHTML=list.map(t=>{
+    const isEditing=t.id===editingId;
+    return `<li class="todo-item${t.done?' done':''} border-${t.priority}">
       <div class="checkbox" onclick="toggleTodo(${t.id})"></div>
-      <span class="priority-tag priority-${p}">${priorityLabels[p]}</span>
+      <span class="priority-tag priority-${t.priority}">${t.priority}</span>
+      <span class="cat-tag cat-${t.category}">${catLabels[t.category]||t.category}</span>
       ${isEditing
-        ? `<input class="edit-input" value="${t.text.replace(/"/g, '&quot;')}"
-            onblur="finishEdit(${t.id}, this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
-            autofocus>`
-        : `<span class="todo-text" ondblclick="startEdit(${t.id})">${escHtml(t.text)}</span>`
-      }
+        ?`<input class="edit-input" value="${t.text.replace(/"/g,'&quot;')}"
+           onblur="finishEdit(${t.id},this.value)"
+           onkeydown="if(event.key==='Enter')this.blur()" autofocus>`
+        :`<span class="todo-text" ondblclick="startEdit(${t.id})">${escHtml(t.text)}</span>`}
       <div class="actions">
         <button onclick="startEdit(${t.id})" title="编辑">&#9998;</button>
         <button onclick="deleteTodo(${t.id})" title="删除">&#10005;</button>
@@ -390,16 +559,16 @@ function render(editingId) {
     </li>`;
   }).join('');
 
-  if (editingId) {
-    const inp = list.querySelector('.edit-input');
-    if (inp) { inp.focus(); inp.selectionStart = inp.value.length; }
-  }
+  if(editingId){const inp=$('todoList').querySelector('.edit-input');if(inp){inp.focus();inp.selectionStart=inp.value.length;}}
 }
 
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+// ---- Main render ----
+function render() {
+  dateInput.value = fmtDate(selectedDate);
+  renderCal();
+  renderList();
 }
 
 render();
