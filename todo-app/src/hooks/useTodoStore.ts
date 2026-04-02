@@ -6,7 +6,15 @@ const STORAGE_KEY = 'todos_v2';
 
 function loadTodos(): Todo[] {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw);
+  if (raw) {
+    // Ensure progress field exists (migration for existing v2 data)
+    const parsed = JSON.parse(raw) as Todo[];
+    return parsed.map(t => ({
+      ...t,
+      progress: t.progress ?? (t.done ? 100 : 0),
+      dailyProgress: t.dailyProgress ?? {},
+    }));
+  }
   // Migrate from old format
   const old = localStorage.getItem('todos');
   if (old) {
@@ -18,11 +26,19 @@ function loadTodos(): Todo[] {
       priority: t.priority === 'high' ? 'P0' : t.priority === 'low' ? 'P2' : 'P1',
       category: (t.category as Category) || 'work',
       date: (t.date as string) || fmtDate(new Date()),
+      progress: (t.done as boolean) ? 100 : 0,
+      dailyProgress: {},
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
     return migrated;
   }
   return [];
+}
+
+// Check if a todo is visible on a given date (single day or within range)
+function todoVisibleOnDate(t: Todo, dateStr: string): boolean {
+  if (!t.endDate) return t.date === dateStr;
+  return dateStr >= t.date && dateStr <= t.endDate;
 }
 
 export function useTodoStore() {
@@ -38,13 +54,21 @@ export function useTodoStore() {
     setTodos(next);
   }, []);
 
-  const addTodo = useCallback((text: string, date: string, priority: Priority, category: Category) => {
-    const next: Todo[] = [{ id: Date.now(), text, done: false, priority, category, date }, ...todos];
-    save(next);
+  const addTodo = useCallback((text: string, date: string, endDate: string, priority: Priority, category: Category) => {
+    const todo: Todo = {
+      id: Date.now(), text, done: false, priority, category,
+      date, endDate: endDate && endDate > date ? endDate : undefined,
+      progress: 0, dailyProgress: {},
+    };
+    save([todo, ...todos]);
   }, [todos, save]);
 
   const toggleTodo = useCallback((id: number) => {
-    save(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    save(todos.map(t => {
+      if (t.id !== id) return t;
+      const newDone = !t.done;
+      return { ...t, done: newDone, progress: newDone ? 100 : t.progress };
+    }));
   }, [todos, save]);
 
   const deleteTodo = useCallback((id: number) => {
@@ -55,8 +79,24 @@ export function useTodoStore() {
     save(todos.map(t => t.id === id ? { ...t, text } : t));
   }, [todos, save]);
 
+  const updateCategory = useCallback((id: number, category: Category) => {
+    save(todos.map(t => t.id === id ? { ...t, category } : t));
+  }, [todos, save]);
+
+  const updatePriority = useCallback((id: number, priority: Priority) => {
+    save(todos.map(t => t.id === id ? { ...t, priority } : t));
+  }, [todos, save]);
+
+  const updateProgress = useCallback((id: number, progress: number, dateStr: string) => {
+    save(todos.map(t => {
+      if (t.id !== id) return t;
+      const dp = { ...t.dailyProgress, [dateStr]: progress };
+      return { ...t, progress, done: progress >= 100, dailyProgress: dp };
+    }));
+  }, [todos, save]);
+
   const clearDone = useCallback((dateStr: string) => {
-    save(todos.filter(t => !(t.done && t.date === dateStr)));
+    save(todos.filter(t => !(t.done && todoVisibleOnDate(t, dateStr))));
   }, [todos, save]);
 
   const filtered = useCallback((list: Todo[]) => {
@@ -69,23 +109,45 @@ export function useTodoStore() {
   }, [catFilter, statusFilter]);
 
   const byDate = useCallback((dateStr: string) => {
-    return todos.filter(t => t.date === dateStr);
+    return todos.filter(t => todoVisibleOnDate(t, dateStr));
   }, [todos]);
 
   const byMonth = useCallback((y: number, m: number) => {
     const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
-    return todos.filter(t => t.date.startsWith(prefix));
+    return todos.filter(t => {
+      // single-day task: starts in this month
+      if (!t.endDate) return t.date.startsWith(prefix);
+      // range task: overlaps with this month
+      const monthStart = `${prefix}-01`;
+      const monthEnd = `${prefix}-31`;
+      return t.date <= monthEnd && t.endDate >= monthStart;
+    });
   }, [todos]);
 
   const byYear = useCallback((y: number) => {
-    return todos.filter(t => t.date.startsWith(String(y)));
+    const yStr = String(y);
+    return todos.filter(t => {
+      if (!t.endDate) return t.date.startsWith(yStr);
+      return t.date.slice(0, 4) <= yStr && t.endDate.slice(0, 4) >= yStr;
+    });
   }, [todos]);
+
+  // Get the effective progress for a todo on a specific date
+  // (inherits from the latest previous day's progress if no record for that date)
+  const getProgressForDate = useCallback((t: Todo, dateStr: string): number => {
+    if (!t.dailyProgress) return t.progress;
+    if (t.dailyProgress[dateStr] !== undefined) return t.dailyProgress[dateStr];
+    // Find the latest entry before this date
+    const dates = Object.keys(t.dailyProgress).filter(d => d < dateStr).sort();
+    if (dates.length > 0) return t.dailyProgress[dates[dates.length - 1]];
+    return 0;
+  }, []);
 
   return {
     todos, viewMode, selectedDate, viewAnchor, catFilter, statusFilter,
     setViewMode, setSelectedDate, setViewAnchor, setCatFilter, setStatusFilter,
-    addTodo, toggleTodo, deleteTodo, editTodo, clearDone,
-    filtered, byDate, byMonth, byYear,
+    addTodo, toggleTodo, deleteTodo, editTodo, updateCategory, updatePriority,
+    updateProgress, clearDone, filtered, byDate, byMonth, byYear, getProgressForDate,
   };
 }
 

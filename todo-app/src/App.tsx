@@ -17,8 +17,8 @@ export default function App() {
   const {
     viewMode, selectedDate, viewAnchor, catFilter, statusFilter,
     setViewMode, setSelectedDate, setViewAnchor, setCatFilter, setStatusFilter,
-    addTodo, toggleTodo, deleteTodo, editTodo, clearDone,
-    filtered, byDate, byMonth,
+    addTodo, toggleTodo, deleteTodo, editTodo, updateCategory, updatePriority,
+    updateProgress, clearDone, filtered, byDate, byMonth, getProgressForDate,
   } = store;
 
   const handleViewChange = useCallback((v: ViewMode) => {
@@ -106,7 +106,10 @@ export default function App() {
 
       <TodoList
         selectedDate={selectedDate} todos={dayTodos} filteredTodos={filteredTodos}
-        onToggle={toggleTodo} onDelete={deleteTodo} onEdit={editTodo} onClearDone={clearDone}
+        onToggle={toggleTodo} onDelete={deleteTodo} onEdit={editTodo}
+        onCategoryChange={updateCategory} onPriorityChange={updatePriority}
+        onProgressChange={updateProgress} getProgressForDate={getProgressForDate}
+        onClearDone={clearDone}
         statusFilter={statusFilter} onStatusChange={setStatusFilter}
       />
 

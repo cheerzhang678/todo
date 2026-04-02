@@ -10,5 +10,8 @@ export interface Todo {
   done: boolean;
   priority: Priority;
   category: Category;
-  date: string; // YYYY-MM-DD
+  date: string;      // 开始日期 YYYY-MM-DD
+  endDate?: string;  // 结束日期 YYYY-MM-DD（可选，不填则为单日任务）
+  progress: number;  // 0-100 当前总进度
+  dailyProgress?: Record<string, number>; // 每日进度快照 { "2026-04-01": 20, "2026-04-02": 50 }
 }
