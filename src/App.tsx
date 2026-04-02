@@ -18,6 +18,7 @@ export default function App() {
     viewMode, selectedDate, viewAnchor, catFilter, statusFilter,
     setViewMode, setSelectedDate, setViewAnchor, setCatFilter, setStatusFilter,
     addTodo, toggleTodo, deleteTodo, editTodo, updateCategory, updatePriority,
+    updateDates, updateRecurrence,
     updateProgress, clearDone, filtered, byDate, byMonth, getProgressForDate,
   } = store;
 
@@ -108,6 +109,7 @@ export default function App() {
         selectedDate={selectedDate} todos={dayTodos} filteredTodos={filteredTodos}
         onToggle={toggleTodo} onDelete={deleteTodo} onEdit={editTodo}
         onCategoryChange={updateCategory} onPriorityChange={updatePriority}
+        onDatesChange={updateDates} onRecurrenceChange={updateRecurrence}
         onProgressChange={updateProgress} getProgressForDate={getProgressForDate}
         onClearDone={clearDone}
         statusFilter={statusFilter} onStatusChange={setStatusFilter}

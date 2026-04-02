@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import type { Priority, Category } from '../types';
+import type { Priority, Category, Recurrence } from '../types';
 import { fmtDate } from '../utils';
 
 interface Props {
   selectedDate: Date;
-  onAdd: (text: string, date: string, endDate: string, priority: Priority, category: Category) => void;
+  onAdd: (text: string, date: string, endDate: string, priority: Priority, category: Category, recurrence: Recurrence) => void;
 }
 
 export default function AddForm({ selectedDate, onAdd }: Props) {
@@ -13,15 +13,17 @@ export default function AddForm({ selectedDate, onAdd }: Props) {
   const [endDate, setEndDate] = useState('');
   const [priority, setPriority] = useState<Priority>('P1');
   const [category, setCategory] = useState<Category>('work');
+  const [recurrence, setRecurrence] = useState<Recurrence>('none');
 
   const dateStr = fmtDate(selectedDate);
 
   const handleAdd = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onAdd(trimmed, date || dateStr, endDate, priority, category);
+    onAdd(trimmed, date || dateStr, endDate, priority, category, recurrence);
     setText('');
     setEndDate('');
+    setRecurrence('none');
   };
 
   return (
@@ -44,6 +46,10 @@ export default function AddForm({ selectedDate, onAdd }: Props) {
         <select value={category} onChange={e => setCategory(e.target.value as Category)}>
           <option value="work">工作</option>
           <option value="life">生活</option>
+        </select>
+        <select value={recurrence} onChange={e => setRecurrence(e.target.value as Recurrence)} title="循环模式">
+          <option value="none">不循环</option>
+          <option value="weekly">每周循环</option>
         </select>
         <button onClick={handleAdd}>添加</button>
       </div>

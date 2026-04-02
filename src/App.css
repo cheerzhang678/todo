@@ -486,7 +486,47 @@
   color: var(--ink-faint);
   flex-shrink: 0;
   min-width: 70px;
+  cursor: pointer;
+  transition: color .2s;
 }
+.item-date-range:hover { color: var(--terra); }
+
+/* date editing inline */
+.item-date-edit {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.date-edit-input {
+  font-family: var(--sans);
+  font-size: 11px;
+  border: none;
+  border-bottom: 1.5px solid var(--terra);
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  padding: 2px 4px;
+  width: 110px;
+}
+
+/* recurrence tag */
+.recurrence-tag {
+  font-family: var(--sans);
+  font-size: 10px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--terra);
+  color: var(--terra);
+}
+.recurrence-tag.recurrence-off {
+  border-color: var(--border-light);
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: opacity .2s;
+}
+.todo-item-wrap:hover .recurrence-tag.recurrence-off { opacity: 1; }
 .item-progress {
   flex: 1;
   display: flex;

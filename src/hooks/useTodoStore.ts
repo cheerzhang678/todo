@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Todo, Priority, Category, ViewMode, StatusFilter, CatFilter } from '../types';
+import type { Todo, Priority, Category, Recurrence, ViewMode, StatusFilter, CatFilter } from '../types';
 import { fmtDate } from '../utils';
 
 const STORAGE_KEY = 'todos_v2';
@@ -13,6 +13,7 @@ function loadTodos(): Todo[] {
       ...t,
       progress: t.progress ?? (t.done ? 100 : 0),
       dailyProgress: t.dailyProgress ?? {},
+      recurrence: t.recurrence ?? 'none',
     }));
   }
   // Migrate from old format
@@ -28,6 +29,7 @@ function loadTodos(): Todo[] {
       date: (t.date as string) || fmtDate(new Date()),
       progress: (t.done as boolean) ? 100 : 0,
       dailyProgress: {},
+      recurrence: 'none' as const,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
     return migrated;
@@ -35,8 +37,16 @@ function loadTodos(): Todo[] {
   return [];
 }
 
-// Check if a todo is visible on a given date (single day or within range)
+// Check if a todo is visible on a given date (single day, range, or weekly recurring)
 function todoVisibleOnDate(t: Todo, dateStr: string): boolean {
+  // Weekly recurring: show on the same weekday as the start date, on or after start date
+  if (t.recurrence === 'weekly') {
+    if (dateStr < t.date) return false;
+    if (t.endDate && dateStr > t.endDate) return false;
+    const startDay = new Date(t.date + 'T00:00:00').getDay();
+    const checkDay = new Date(dateStr + 'T00:00:00').getDay();
+    return startDay === checkDay;
+  }
   if (!t.endDate) return t.date === dateStr;
   return dateStr >= t.date && dateStr <= t.endDate;
 }
@@ -54,11 +64,11 @@ export function useTodoStore() {
     setTodos(next);
   }, []);
 
-  const addTodo = useCallback((text: string, date: string, endDate: string, priority: Priority, category: Category) => {
+  const addTodo = useCallback((text: string, date: string, endDate: string, priority: Priority, category: Category, recurrence: Recurrence = 'none') => {
     const todo: Todo = {
       id: Date.now(), text, done: false, priority, category,
       date, endDate: endDate && endDate > date ? endDate : undefined,
-      progress: 0, dailyProgress: {},
+      progress: 0, dailyProgress: {}, recurrence,
     };
     save([todo, ...todos]);
   }, [todos, save]);
@@ -85,6 +95,14 @@ export function useTodoStore() {
 
   const updatePriority = useCallback((id: number, priority: Priority) => {
     save(todos.map(t => t.id === id ? { ...t, priority } : t));
+  }, [todos, save]);
+
+  const updateDates = useCallback((id: number, date: string, endDate?: string) => {
+    save(todos.map(t => t.id === id ? { ...t, date, endDate: endDate && endDate > date ? endDate : undefined } : t));
+  }, [todos, save]);
+
+  const updateRecurrence = useCallback((id: number, recurrence: Recurrence) => {
+    save(todos.map(t => t.id === id ? { ...t, recurrence } : t));
   }, [todos, save]);
 
   const updateProgress = useCallback((id: number, progress: number, dateStr: string) => {
@@ -115,6 +133,14 @@ export function useTodoStore() {
   const byMonth = useCallback((y: number, m: number) => {
     const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
     return todos.filter(t => {
+      if (t.recurrence === 'weekly') {
+        // Weekly task: check if any day in this month matches the weekday
+        const monthStart = `${prefix}-01`;
+        const monthEnd = `${prefix}-31`;
+        if (t.date > monthEnd) return false;
+        if (t.endDate && t.endDate < monthStart) return false;
+        return true; // weekly task likely overlaps with this month
+      }
       // single-day task: starts in this month
       if (!t.endDate) return t.date.startsWith(prefix);
       // range task: overlaps with this month
@@ -127,6 +153,11 @@ export function useTodoStore() {
   const byYear = useCallback((y: number) => {
     const yStr = String(y);
     return todos.filter(t => {
+      if (t.recurrence === 'weekly') {
+        if (t.date.slice(0, 4) > yStr) return false;
+        if (t.endDate && t.endDate.slice(0, 4) < yStr) return false;
+        return true;
+      }
       if (!t.endDate) return t.date.startsWith(yStr);
       return t.date.slice(0, 4) <= yStr && t.endDate.slice(0, 4) >= yStr;
     });
@@ -147,6 +178,7 @@ export function useTodoStore() {
     todos, viewMode, selectedDate, viewAnchor, catFilter, statusFilter,
     setViewMode, setSelectedDate, setViewAnchor, setCatFilter, setStatusFilter,
     addTodo, toggleTodo, deleteTodo, editTodo, updateCategory, updatePriority,
+    updateDates, updateRecurrence,
     updateProgress, clearDone, filtered, byDate, byMonth, byYear, getProgressForDate,
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Todo, Priority, Category, StatusFilter } from '../types';
+import type { Todo, Priority, Category, Recurrence, StatusFilter } from '../types';
 import { fmtDate } from '../utils';
 
 interface Props {
@@ -11,6 +11,8 @@ interface Props {
   onEdit: (id: number, text: string) => void;
   onCategoryChange: (id: number, category: Category) => void;
   onPriorityChange: (id: number, priority: Priority) => void;
+  onDatesChange: (id: number, date: string, endDate?: string) => void;
+  onRecurrenceChange: (id: number, recurrence: Recurrence) => void;
   onProgressChange: (id: number, progress: number, dateStr: string) => void;
   getProgressForDate: (t: Todo, dateStr: string) => number;
   onClearDone: (dateStr: string) => void;
@@ -29,10 +31,12 @@ const statusOptions: { key: StatusFilter; label: string }[] = [
 
 export default function TodoList({
   selectedDate, todos, filteredTodos, onToggle, onDelete, onEdit,
-  onCategoryChange, onPriorityChange, onProgressChange, getProgressForDate,
+  onCategoryChange, onPriorityChange, onDatesChange, onRecurrenceChange,
+  onProgressChange, getProgressForDate,
   onClearDone, statusFilter, onStatusChange,
 }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingDateId, setEditingDateId] = useState<number | null>(null);
   const ds = fmtDate(selectedDate);
   const total = todos.length;
   const doneCount = todos.filter(t => t.done).length;
@@ -46,6 +50,11 @@ export default function TodoList({
   const cyclePriority = (t: Todo) => {
     const idx = priorityOrder.indexOf(t.priority);
     onPriorityChange(t.id, priorityOrder[(idx + 1) % priorityOrder.length]);
+  };
+
+  const toggleRecurrence = (t: Todo) => {
+    const next: Recurrence = t.recurrence === 'weekly' ? 'none' : 'weekly';
+    onRecurrenceChange(t.id, next);
   };
 
   return (
@@ -81,6 +90,7 @@ export default function TodoList({
         {filteredTodos.map(t => {
           const itemProgress = getProgressForDate(t, ds);
           const isRange = !!t.endDate;
+          const isWeekly = t.recurrence === 'weekly';
           return (
             <li key={t.id} className={`todo-item-wrap border-${t.priority}${t.done ? ' done' : ''}`}>
               <div className="todo-item-row">
@@ -91,6 +101,16 @@ export default function TodoList({
                 <span className={`cat-tag cat-${t.category} clickable-tag`} onClick={() => cycleCat(t)} title="点击切换分类">
                   {catLabels[t.category] || t.category}
                 </span>
+                {isWeekly && (
+                  <span className="recurrence-tag clickable-tag" onClick={() => toggleRecurrence(t)} title="点击取消周循环">
+                    ↻ 每周
+                  </span>
+                )}
+                {!isWeekly && (
+                  <span className="recurrence-tag recurrence-off clickable-tag" onClick={() => toggleRecurrence(t)} title="点击开启周循环">
+                    ↻
+                  </span>
+                )}
                 {editingId === t.id ? (
                   <input
                     className="edit-input"
@@ -109,9 +129,44 @@ export default function TodoList({
               </div>
               {/* Date range & per-item progress */}
               <div className="item-meta">
-                <span className="item-date-range">
-                  {t.date.slice(5)}{isRange ? ` → ${t.endDate!.slice(5)}` : ''}
-                </span>
+                {editingDateId === t.id ? (
+                  <span className="item-date-edit">
+                    <input
+                      type="date"
+                      defaultValue={t.date}
+                      className="date-edit-input"
+                      onBlur={(e) => {
+                        const newDate = e.target.value;
+                        if (newDate) {
+                          const endInput = e.target.nextElementSibling as HTMLInputElement | null;
+                          const newEnd = endInput?.value || t.endDate || '';
+                          onDatesChange(t.id, newDate, newEnd || undefined);
+                        }
+                        setEditingDateId(null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      autoFocus
+                    />
+                    <input
+                      type="date"
+                      defaultValue={t.endDate || ''}
+                      className="date-edit-input"
+                      onBlur={(e) => {
+                        const newEnd = e.target.value;
+                        const startInput = e.target.previousElementSibling as HTMLInputElement | null;
+                        const newDate = startInput?.value || t.date;
+                        onDatesChange(t.id, newDate, newEnd || undefined);
+                        setEditingDateId(null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      placeholder="结束日期"
+                    />
+                  </span>
+                ) : (
+                  <span className="item-date-range clickable-tag" onClick={() => setEditingDateId(t.id)} title="点击修改日期">
+                    {t.date.slice(5)}{isRange ? ` → ${t.endDate!.slice(5)}` : ''}
+                  </span>
+                )}
                 <div className="item-progress">
                   <div className="item-progress-bar">
                     <div className="item-progress-fill" style={{ width: `${itemProgress}%` }} />
