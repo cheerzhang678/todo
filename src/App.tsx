@@ -2,6 +2,9 @@ import { useCallback } from 'react';
 import type { ViewMode } from './types';
 import { fmtDate, parseDate } from './utils';
 import { useTodoStore } from './hooks/useTodoStore';
+import { useBoardId } from './hooks/useBoardId';
+import { useBoardStore } from './hooks/useBoardStore';
+import { isSupabaseConfigured } from './lib/supabase';
 import Header from './components/Header';
 import CalNav from './components/CalNav';
 import MonthView from './components/MonthView';
@@ -10,10 +13,27 @@ import DayView from './components/DayView';
 import YearView from './components/YearView';
 import TodoList from './components/TodoList';
 import AddForm from './components/AddForm';
+import BoardLanding from './components/BoardLanding';
+import BoardHeader from './components/BoardHeader';
 import './App.css';
 
-export default function App() {
+function LocalApp() {
   const store = useTodoStore();
+  return <AppContent store={store} boardId={null} />;
+}
+
+function BoardApp({ boardId }: { boardId: string }) {
+  const store = useBoardStore(boardId);
+  return <AppContent store={store} boardId={boardId} syncStatus={store.syncStatus} onlineCount={store.onlineCount} syncError={store.syncError} />;
+}
+
+function AppContent({ store, boardId, syncStatus, onlineCount, syncError }: {
+  store: ReturnType<typeof useTodoStore>;
+  boardId: string | null;
+  syncStatus?: string;
+  onlineCount?: number;
+  syncError?: string | null;
+}) {
   const {
     viewMode, selectedDate, viewAnchor, catFilter, statusFilter,
     setViewMode, setSelectedDate, setViewAnchor, setCatFilter, setStatusFilter,
@@ -79,7 +99,16 @@ export default function App() {
   const filteredTodos = filtered(dayTodos);
 
   return (
-    <div className="container">
+    <>
+      {boardId && (
+        <BoardHeader
+          boardId={boardId}
+          syncStatus={(syncStatus || 'connected') as 'connecting' | 'connected' | 'reconnecting' | 'error'}
+          onlineCount={onlineCount || 1}
+          syncError={syncError || null}
+        />
+      )}
+
       <Header catFilter={catFilter} onCatChange={setCatFilter} />
 
       <div className="card">
@@ -116,6 +145,35 @@ export default function App() {
       />
 
       <AddForm selectedDate={selectedDate} onAdd={addTodo} />
+    </>
+  );
+}
+
+export default function App() {
+  const { boardId, setBoardId } = useBoardId();
+
+  // If Supabase is configured and no board ID, show landing
+  if (isSupabaseConfigured && !boardId) {
+    return (
+      <div className="container">
+        <BoardLanding onJoinBoard={setBoardId} />
+      </div>
+    );
+  }
+
+  // If board ID present and Supabase configured, use collaborative mode
+  if (boardId && isSupabaseConfigured) {
+    return (
+      <div className="container">
+        <BoardApp boardId={boardId} />
+      </div>
+    );
+  }
+
+  // Fallback: local mode (no Supabase configured)
+  return (
+    <div className="container">
+      <LocalApp />
     </div>
   );
 }

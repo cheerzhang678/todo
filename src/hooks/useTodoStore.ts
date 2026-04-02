@@ -4,7 +4,7 @@ import { fmtDate } from '../utils';
 
 const STORAGE_KEY = 'todos_v2';
 
-function loadTodos(): Todo[] {
+export function loadTodos(): Todo[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     // Ensure progress field exists (migration for existing v2 data)
