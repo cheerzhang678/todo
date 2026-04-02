@@ -1,4 +1,8 @@
--- Supabase 建表脚本：在 Supabase Dashboard -> SQL Editor 中执行
+-- 先删除已有的对象，再重新创建
+DROP TRIGGER IF EXISTS todos_updated_at ON todos;
+DROP FUNCTION IF EXISTS update_updated_at();
+DROP TABLE IF EXISTS todos;
+DROP TABLE IF EXISTS boards;
 
 -- 1. boards 表
 CREATE TABLE boards (
@@ -55,5 +59,5 @@ CREATE POLICY "todos_insert" ON todos FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "todos_update" ON todos FOR UPDATE TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "todos_delete" ON todos FOR DELETE TO anon USING (true);
 
--- 5. 开启 Realtime（也可在 Dashboard -> Database -> Replication 中手动开启）
+-- 5. 开启 Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE todos;

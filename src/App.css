@@ -496,6 +496,7 @@
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  align-items: center;
 }
 .date-edit-input {
   font-family: var(--sans);
@@ -507,6 +508,17 @@
   outline: none;
   padding: 2px 4px;
   width: 110px;
+}
+.date-edit-save {
+  font-family: var(--sans);
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--terra);
+  background: var(--terra);
+  color: var(--cream);
+  cursor: pointer;
+  letter-spacing: 1px;
+  flex-shrink: 0;
 }
 
 /* recurrence tag */

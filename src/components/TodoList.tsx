@@ -130,37 +130,42 @@ export default function TodoList({
               {/* Date range & per-item progress */}
               <div className="item-meta">
                 {editingDateId === t.id ? (
-                  <span className="item-date-edit">
+                  <span className="item-date-edit" ref={(el) => {
+                    // Close when clicking outside the date edit area
+                    if (!el) return;
+                    const handleOutsideClick = (ev: MouseEvent) => {
+                      if (!el.contains(ev.target as Node)) {
+                        const startInput = el.querySelector('input:first-child') as HTMLInputElement;
+                        const endInput = el.querySelector('input:last-child') as HTMLInputElement;
+                        const newDate = startInput?.value || t.date;
+                        const newEnd = endInput?.value || '';
+                        onDatesChange(t.id, newDate, newEnd || undefined);
+                        setEditingDateId(null);
+                      }
+                    };
+                    setTimeout(() => document.addEventListener('click', handleOutsideClick, { once: true, capture: true }), 0);
+                  }}>
                     <input
                       type="date"
                       defaultValue={t.date}
                       className="date-edit-input"
-                      onBlur={(e) => {
-                        const newDate = e.target.value;
-                        if (newDate) {
-                          const endInput = e.target.nextElementSibling as HTMLInputElement | null;
-                          const newEnd = endInput?.value || t.endDate || '';
-                          onDatesChange(t.id, newDate, newEnd || undefined);
-                        }
-                        setEditingDateId(null);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                       autoFocus
                     />
                     <input
                       type="date"
                       defaultValue={t.endDate || ''}
                       className="date-edit-input"
-                      onBlur={(e) => {
-                        const newEnd = e.target.value;
-                        const startInput = e.target.previousElementSibling as HTMLInputElement | null;
-                        const newDate = startInput?.value || t.date;
-                        onDatesChange(t.id, newDate, newEnd || undefined);
-                        setEditingDateId(null);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                       placeholder="结束日期"
                     />
+                    <button className="date-edit-save" onClick={() => {
+                      const container = document.querySelector(`.item-date-edit`) as HTMLElement;
+                      if (!container) return;
+                      const inputs = container.querySelectorAll('input');
+                      const newDate = inputs[0]?.value || t.date;
+                      const newEnd = inputs[1]?.value || '';
+                      onDatesChange(t.id, newDate, newEnd || undefined);
+                      setEditingDateId(null);
+                    }}>确定</button>
                   </span>
                 ) : (
                   <span className="item-date-range clickable-tag" onClick={() => setEditingDateId(t.id)} title="点击修改日期">
