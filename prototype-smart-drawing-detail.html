@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智慧绘图 - 图片详情页改造原型</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+    background: #fff;
+    color: #1a1a2e;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ===== Left Sidebar ===== */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 240px;
+    background: #fff;
+    border-right: 1px solid #eee;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: width .3s cubic-bezier(.4,0,.2,1), transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 20px 16px;
+    font-size: 17px; font-weight: 600; color: #222;
+    white-space: nowrap;
+  }
+  .sidebar-logo svg { width: 28px; height: 28px; flex-shrink: 0; }
+  .sidebar-logo-text { transition: opacity .2s; }
+  .sidebar-collapse-btn {
+    margin-left: auto;
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid #e8e8ed; background: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #999; font-size: 14px; flex-shrink: 0;
+    transition: transform .3s;
+  }
+  .sidebar-collapse-btn:hover { background: #f5f5f8; }
+
+  .sidebar-new-chat {
+    margin: 0 16px 12px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4a8af4, #6c7cf7);
+    color: #fff;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    border: none; width: calc(100% - 32px);
+    transition: opacity .15s;
+    white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-new-chat:hover { opacity: .9; }
+
+  .sidebar-nav { padding: 4px 0; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px;
+    font-size: 14px; color: #555;
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+    white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-item:hover { background: #f5f6fa; color: #333; }
+  .sidebar-item.active { color: #4a8af4; font-weight: 500; background: #eef3ff; }
+  .sidebar-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-item .badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    font-weight: 600; margin-left: 4px;
+  }
+  .badge-new { background: #e8f5e9; color: #43a047; }
+  .badge-beta { background: #fff3e0; color: #ef6c00; }
+
+  .sidebar-divider { height: 1px; background: #f0f0f5; margin: 8px 16px; }
+
+  .sidebar-section-title {
+    padding: 12px 20px 6px;
+    font-size: 12px; color: #999; font-weight: 500;
+    display: flex; align-items: center; justify-content: space-between;
+    white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-section-title .add-btn {
+    width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ddd;
+    background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #999; font-size: 14px; flex-shrink: 0;
+  }
+
+  .sidebar-sub-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 20px 8px 24px;
+    font-size: 13px; color: #666;
+    cursor: pointer; transition: background .15s;
+    white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-sub-item:hover { background: #f5f6fa; }
+  .sidebar-sub-item svg { width: 16px; height: 16px; color: #bbb; flex-shrink: 0; }
+
+  .sidebar-history-title {
+    padding: 12px 20px 6px;
+    font-size: 12px; color: #999; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-history-item {
+    padding: 7px 20px 7px 24px;
+    font-size: 13px; color: #666;
+    cursor: pointer; transition: background .15s;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sidebar-history-item:hover { background: #f5f6fa; color: #333; }
+  .sidebar-history-item.active-chat {
+    background: #eef3ff; color: #4a8af4; font-weight: 500;
+  }
+
+  /* ===== Sidebar Collapsed State ===== */
+  .sidebar.collapsed {
+    width: 0; padding: 0;
+    border-right: none;
+    overflow: hidden;
+  }
+
+  /* ===== Layout: Two Column, full height ===== */
+  .detail-layout {
+    display: flex;
+    height: 100vh;
+    margin-left: 240px;
+    transition: margin-left .3s cubic-bezier(.4,0,.2,1);
+  }
+  body.sidebar-collapsed .detail-layout { margin-left: 0; }
+
+  /* ===== Left: Image Preview Panel (has its own top bar) ===== */
+  .preview-panel {
+    flex: 1;
+    background: #f5f6fa;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* Top bar ONLY on preview panel (left side) */
+  .preview-top-bar {
+    height: 52px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .preview-top-left {
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  body.sidebar-collapsed .preview-top-left {
+    opacity: 1; pointer-events: auto;
+  }
+  .topbar-expand-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1px solid #e8e8ed; background: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #666; transition: all .15s;
+  }
+  .topbar-expand-btn:hover { background: #f5f5f8; color: #333; }
+  .topbar-expand-btn svg { width: 18px; height: 18px; }
+  .topbar-newchat-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: none; background: linear-gradient(135deg, #4a8af4, #6c7cf7);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #fff; transition: opacity .15s;
+  }
+  .topbar-newchat-btn:hover { opacity: .85; }
+  .topbar-newchat-btn svg { width: 18px; height: 18px; }
+
+  .preview-top-center {
+    display: flex; align-items: center; gap: 6px;
+    margin-left: auto;
+  }
+  .topbar-action {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px;
+    border: none; background: transparent;
+    cursor: pointer; color: #555; font-size: 14px;
+    transition: all .15s; white-space: nowrap;
+  }
+  .topbar-action:hover { background: #f5f6fa; color: #333; }
+  .topbar-action svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .topbar-close {
+    width: 36px; height: 36px; border-radius: 8px;
+    border: none; background: transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #666; transition: all .15s;
+    flex-shrink: 0;
+  }
+  .topbar-close:hover { background: #f5f6fa; color: #333; }
+  .topbar-close svg { width: 20px; height: 20px; }
+
+  /* Image area below the preview top bar */
+  .preview-image-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Placeholder gradient for prototype (simulating the 3D rabbit lamp image) */
+  .preview-panel .preview-image-placeholder {
+    width: 500px;
+    height: 660px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #0a0a1a 0%, #0d0d20 40%, #1a1510 70%, #0a0a1a 100%);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.15);
+  }
+  .preview-image-placeholder::after {
+    content: '';
+    position: absolute;
+    top: 30%; left: 50%; transform: translateX(-50%);
+    width: 260px; height: 340px;
+    background: radial-gradient(ellipse, rgba(255,200,80,.15) 0%, transparent 70%);
+    border-radius: 50% 50% 45% 45%;
+  }
+  /* Lamp shade */
+  .lamp-shade {
+    position: absolute;
+    top: 6%; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 150px;
+    background: linear-gradient(135deg, #2a5ecc, #3878e8);
+    border-radius: 10px 10px 50% 50% / 10px 10px 30% 30%;
+    overflow: hidden;
+    z-index: 2;
+  }
+  .lamp-shade-text {
+    position: absolute; top: 10%; left: 8%;
+    font-size: 11px; color: rgba(255,180,50,.9); font-weight: 800;
+    font-style: italic; line-height: 1.3;
+  }
+  .lamp-shade-text-big {
+    position: absolute; top: 35%; left: 22%;
+    font-size: 32px; color: #ff4444; font-weight: 900;
+    text-shadow: 2px 2px 0 #cc0000;
+    font-family: Impact, sans-serif;
+  }
+  .lamp-shade-decor {
+    position: absolute; top: 15%; right: 12%;
+    font-size: 9px; color: rgba(255,255,255,.5); font-weight: 700;
+  }
+  .lamp-shade-decor2 {
+    position: absolute; bottom: 18%; left: 15%;
+    font-size: 9px; color: rgba(255,100,100,.7); font-weight: 700;
+  }
+  .lamp-shade-decor3 {
+    position: absolute; bottom: 15%; right: 10%;
+    font-size: 8px; color: rgba(255,255,255,.4); font-weight: 600;
+  }
+  /* Light beam from shade */
+  .light-beam {
+    position: absolute;
+    top: 22%; left: 20%; right: 20%; bottom: 10%;
+    background: radial-gradient(ellipse at top center, rgba(255,210,80,.12) 0%, transparent 70%);
+    z-index: 1;
+  }
+  /* Bunny body */
+  .bunny-body {
+    position: absolute;
+    bottom: 8%; left: 50%; transform: translateX(-50%);
+    width: 190px; height: 220px;
+    background: radial-gradient(ellipse at center, #f0e6d8, #e0d0be);
+    border-radius: 50% 50% 45% 45%;
+    z-index: 3;
+  }
+  .bunny-shirt {
+    position: absolute;
+    top: 32%; left: 50%; transform: translateX(-50%);
+    width: 150px; height: 85px;
+    background: #4ea8f7;
+    border-radius: 30%;
+    z-index: 4;
+  }
+  .bunny-pants {
+    position: absolute;
+    bottom: 3%; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 55px;
+    background: #4caf50;
+    border-radius: 10px;
+    z-index: 4;
+  }
+  /* Base / platform */
+  .bunny-base {
+    position: absolute;
+    bottom: 4%; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 20px;
+    background: linear-gradient(135deg, #e8c840, #d4a820);
+    border-radius: 50%;
+    z-index: 2;
+  }
+  /* Watermark */
+  .watermark {
+    position: absolute;
+    bottom: 16px; right: 20px;
+    font-size: 12px; color: rgba(255,255,255,.35);
+    z-index: 10;
+  }
+
+  /* Zoom controls */
+  .zoom-controls {
+    position: absolute;
+    bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(12px);
+    border-radius: 24px;
+    padding: 6px 16px;
+    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+  .zoom-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: none; background: transparent;
+    color: #666; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: color .15s;
+  }
+  .zoom-btn:hover { color: #333; background: #f0f0f5; }
+  .zoom-label {
+    font-size: 13px; color: #555;
+    min-width: 40px; text-align: center;
+    user-select: none;
+  }
+
+  /* ===== Right: Chat Panel (NO top bar, full height from top to bottom) ===== */
+  .chat-panel {
+    width: 420px;
+    min-width: 380px;
+    max-width: 480px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    flex-shrink: 0;
+    border-left: 1px solid #eee;
+  }
+
+  /* Chat messages area (full bleed, no top bar) */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Model label */
+  .model-label {
+    font-size: 12px; color: #4a8af4;
+    margin-bottom: 8px;
+  }
+
+  /* Generated image thumbnail in chat */
+  .chat-image-result {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+    cursor: pointer;
+  }
+  .chat-image-placeholder {
+    width: 100%;
+    aspect-ratio: 3/4;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #0a0a1a 0%, #0d0d20 40%, #1a1510 70%, #0a0a1a 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .chat-image-placeholder .lamp-shade {
+    width: 170px; height: 90px;
+    top: 6%; left: 50%; transform: translateX(-50%);
+  }
+  .chat-image-placeholder .lamp-shade-text { font-size: 6px; }
+  .chat-image-placeholder .lamp-shade-text-big { font-size: 18px; }
+  .chat-image-placeholder .bunny-body {
+    width: 115px; height: 130px;
+    bottom: 8%;
+  }
+  .chat-image-placeholder .bunny-shirt {
+    width: 90px; height: 50px; top: 32%;
+  }
+  .chat-image-placeholder .bunny-pants {
+    width: 60px; height: 32px; bottom: 3%;
+  }
+  .chat-image-placeholder .bunny-base {
+    width: 85px; height: 12px; bottom: 4%;
+  }
+  .chat-image-placeholder .light-beam {
+    top: 22%; left: 15%; right: 15%; bottom: 10%;
+  }
+  .chat-image-placeholder .watermark {
+    bottom: 8px; right: 12px; font-size: 10px;
+  }
+  /* Scroll-down indicator on chat image */
+  .scroll-down-hint {
+    position: absolute;
+    bottom: 12px; right: 12px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.9);
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 5;
+  }
+  .scroll-down-hint svg { width: 16px; height: 16px; color: #666; }
+
+  /* Action bar under image */
+  .image-actions {
+    display: flex; align-items: center; gap: 4px;
+    padding: 8px 0 0;
+    flex-wrap: wrap;
+  }
+  .img-action-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    border: none; background: transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #999; transition: all .15s;
+    position: relative;
+  }
+  .img-action-btn:hover { background: #f5f5f8; color: #555; }
+  .img-action-btn svg { width: 20px; height: 20px; }
+  .img-action-btn.more-btn { margin-left: auto; }
+
+  /* Separator */
+  .chat-separator {
+    height: 1px; background: #f0f0f5; margin: 8px 0 16px;
+  }
+
+  /* ===== Chat Input Area (bottom of chat panel) ===== */
+  .chat-input-area {
+    padding: 12px 16px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f0f5;
+  }
+  .chat-input-box {
+    background: #f5f6fa;
+    border-radius: 14px;
+    border: 1px solid #e8e8ed;
+    padding: 12px 16px;
+    transition: all .2s;
+  }
+  .chat-input-box:focus-within {
+    border-color: #c5d4f7;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(74,124,247,.1);
+  }
+  .chat-input-top-row {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .back-to-drawing {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: #4a8af4; font-weight: 500;
+    cursor: pointer;
+    padding: 3px 8px 3px 4px;
+    border-radius: 6px;
+    background: #eef3ff;
+    border: none;
+    transition: background .15s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .back-to-drawing:hover { background: #dde8ff; }
+  .back-to-drawing svg { width: 14px; height: 14px; }
+  /* Tooltip on hover */
+  .back-to-drawing::after {
+    content: '点击返回默认模式';
+    position: absolute;
+    bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e; color: #fff;
+    font-size: 12px; font-weight: 400;
+    padding: 5px 12px; border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s;
+    z-index: 10;
+  }
+  .back-to-drawing::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px); left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1a1a2e;
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s;
+    z-index: 10;
+  }
+  .back-to-drawing:hover::after,
+  .back-to-drawing:hover::before { opacity: 1; }
+
+  .chat-textarea {
+    flex: 1; min-width: 0;
+    border: none; outline: none;
+    font-size: 14px; resize: none;
+    min-height: 24px; max-height: 100px;
+    line-height: 24px; font-family: inherit;
+    color: #333; background: transparent;
+  }
+  .chat-textarea::placeholder { color: #bbb; font-size: 14px; }
+
+  .chat-input-bottom {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px;
+  }
+
+  /* Ratio selector */
+  .ratio-selector {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 8px;
+    border: 1px solid #e8e8ed; font-size: 12px; color: #666;
+    cursor: pointer; background: #fff;
+    transition: all .2s; user-select: none;
+  }
+  .ratio-selector:hover { border-color: #4a8af4; color: #4a8af4; }
+  .ratio-selector svg { width: 14px; height: 14px; }
+  .ratio-arrow { transition: transform .2s; }
+  .ratio-selector.open .ratio-arrow { transform: rotate(180deg); }
+  .ratio-dropdown {
+    position: absolute; bottom: calc(100% + 8px); left: 0;
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
+    padding: 6px; display: none; min-width: 200px; z-index: 500;
+  }
+  .ratio-dropdown.open { display: block; }
+  .ratio-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: #555; transition: all .15s;
+  }
+  .ratio-option:hover { background: #f0f2ff; color: #4a8af4; }
+  .ratio-option.active { background: #eef2ff; color: #4a8af4; font-weight: 600; }
+  .ratio-icon {
+    border: 2px solid currentColor; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .chat-input-right-actions {
+    display: flex; align-items: center; gap: 6px;
+    margin-left: auto;
+  }
+  .chat-mic-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: transparent; border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #999; transition: color .15s, background .15s;
+  }
+  .chat-mic-btn:hover { color: #555; background: #eee; }
+  .chat-mic-btn svg { width: 18px; height: 18px; }
+  .chat-send-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #1a1a2e; border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform .15s, background .15s; flex-shrink: 0;
+  }
+  .chat-send-btn:hover { background: #333; transform: scale(1.06); }
+  .chat-send-btn:active { transform: scale(.95); }
+  .chat-send-btn svg { width: 16px; height: 16px; fill: #fff; }
+
+  .chat-disclaimer {
+    text-align: center; font-size: 11px; color: #bbb;
+    margin-top: 8px;
+  }
+
+  /* ===== Prototype Notes ===== */
+  .notes-toggle {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: #fff; font-size: 20px; font-weight: 700;
+    border: none; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(238,90,36,.3);
+    z-index: 500; display: flex; align-items: center; justify-content: center;
+    transition: transform .2s;
+  }
+  .notes-toggle:hover { transform: scale(1.1); }
+  .notes-panel {
+    position: fixed; bottom: 80px; right: 24px;
+    width: 380px; max-height: 60vh;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0,0,0,.15);
+    padding: 20px; z-index: 500;
+    display: none; overflow-y: auto;
+    color: #333;
+  }
+  .notes-panel.open { display: block; }
+  .notes-panel h3 {
+    font-size: 16px; margin-bottom: 14px; color: #1a1a2e;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .note-item {
+    padding: 8px 0; border-bottom: 1px solid #f0f0f5;
+    font-size: 13px; line-height: 1.6; color: #555;
+  }
+  .note-item:last-child { border-bottom: none; }
+  .note-item strong { color: #4a8af4; font-weight: 600; }
+  .note-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #4a8af4; color: #fff;
+    font-size: 11px; font-weight: 700; margin-right: 6px; flex-shrink: 0;
+  }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: #1a1a2e; color: #fff; padding: 10px 24px; border-radius: 10px;
+    font-size: 14px; z-index: 600; opacity: 0;
+    transition: all .35s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Scrollbar */
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-track { background: transparent; }
+  .chat-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+  .chat-messages::-webkit-scrollbar-thumb:hover { background: #ccc; }
+</style>
+</head>
+<body>
+
+<!-- ===== Left Sidebar ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 32 32"><defs><linearGradient id="sGrad" x1="0" y1="0" x2=".8" y2="1"><stop offset="0%" stop-color="#4facfe"/><stop offset="100%" stop-color="#2b6dde"/></linearGradient></defs><path d="M16 2 L28 9 L28 23 L16 30 L4 23 L4 9 Z" fill="url(#sGrad)"/><path d="M4 9 L16 16 L28 9" fill="none" stroke="rgba(255,255,255,.35)" stroke-width=".8"/><path d="M16 16 L16 30" fill="none" stroke="rgba(255,255,255,.35)" stroke-width=".8"/><path d="M10 12.5 L16 16 L16 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 12.5 L16 16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5" stroke-linecap="round"/><path d="M9 19 L15 22.5" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/></svg>
+    <span class="sidebar-logo-text">文心一言</span>
+    <button class="sidebar-collapse-btn" id="collapseBtn" title="收起导航" onclick="toggleSidebar()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+    </button>
+  </div>
+
+  <button class="sidebar-new-chat">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>新对话</span>
+  </button>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span>创意写作</span>
+    </div>
+    <div class="sidebar-item" id="sidebarDrawingItem">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      <span>智慧绘图</span>
+      <span class="badge badge-new">NEW</span>
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span>超级智能体</span>
+      <span class="badge badge-beta">测试版</span>
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>更多</span>
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <span>我的收藏</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section-title">
+    项目
+    <button class="add-btn">+</button>
+  </div>
+  <div class="sidebar-sub-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    家长里短
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-history-title">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    对话
+  </div>
+  <div class="sidebar-history-item active-chat">3D兔子台灯</div>
+  <div class="sidebar-history-item">冷链鲜奶摄影图</div>
+  <div class="sidebar-history-item">生成图片：画面采用 1:1 的...</div>
+  <div class="sidebar-history-item">生成图片：画面采用 1:1 的...</div>
+  <div class="sidebar-history-item">超精细折纸汉堡摄影</div>
+  <div class="sidebar-history-item">3D兔子台灯</div>
+</aside>
+
+<!-- ===== Detail Layout: Image + Chat ===== -->
+<div class="detail-layout" id="detailLayout">
+
+  <!-- Left: Image Preview Panel (has its own top bar) -->
+  <div class="preview-panel">
+    <!-- Top bar only on the left image side -->
+    <div class="preview-top-bar">
+      <div class="preview-top-left">
+        <button class="topbar-expand-btn" title="展开导航" onclick="toggleSidebar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 7 18 12 13 17"/><polyline points="6 7 11 12 6 17"/></svg>
+        </button>
+        <button class="topbar-newchat-btn" title="新对话">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      <!-- Center: 收藏 + 下载 + 关闭 -->
+      <div class="preview-top-center">
+        <button class="topbar-action" onclick="showToast('已收藏')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          收藏
+        </button>
+        <button class="topbar-action" onclick="showToast('已下载')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          下载
+        </button>
+        <button class="topbar-close" title="关闭" onclick="showToast('返回列表页')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Image display area -->
+    <div class="preview-image-area">
+    <!-- Image placeholder -->
+    <div class="preview-image-placeholder">
+      <div class="light-beam"></div>
+      <div class="lamp-shade">
+        <div class="lamp-shade-text">"I own<br>my life</div>
+        <div class="lamp-shade-text-big">POW!</div>
+        <div class="lamp-shade-decor">ZAP!</div>
+        <div class="lamp-shade-decor2">HipHop</div>
+        <div class="lamp-shade-decor3">BAM!</div>
+      </div>
+      <div class="bunny-body">
+        <div class="bunny-shirt"></div>
+        <div class="bunny-pants"></div>
+      </div>
+      <div class="bunny-base"></div>
+      <div class="watermark">文心AI生成</div>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls">
+      <button class="zoom-btn" onclick="changeZoom(-10)">−</button>
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <button class="zoom-btn" onclick="changeZoom(10)">+</button>
+    </div>
+    </div><!-- end preview-image-area -->
+  </div><!-- end preview-panel -->
+
+  <!-- Right: Chat Panel (no top bar, chat flows from top) -->
+  <div class="chat-panel">
+    <!-- Chat messages area (directly, no top bar) -->
+    <div class="chat-messages">
+      <!-- Model label -->
+      <div class="model-label">ERNIE-Image Turbo</div>
+
+      <!-- Generated image thumbnail -->
+      <div class="chat-image-result">
+        <div class="chat-image-placeholder">
+          <div class="light-beam"></div>
+          <div class="lamp-shade">
+            <div class="lamp-shade-text">"I own<br>my life</div>
+            <div class="lamp-shade-text-big">POW!</div>
+            <div class="lamp-shade-decor" style="font-size:6px;">ZAP!</div>
+            <div class="lamp-shade-decor2" style="font-size:6px;">HipHop</div>
+          </div>
+          <div class="bunny-body">
+            <div class="bunny-shirt"></div>
+            <div class="bunny-pants"></div>
+          </div>
+          <div class="bunny-base"></div>
+          <div class="watermark">文心AI生成</div>
+        </div>
+        <div class="scroll-down-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Image action buttons -->
+      <div class="image-actions">
+        <button class="img-action-btn" title="重新生成" onclick="showToast('重新生成中...')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+        <button class="img-action-btn" title="朗读" onclick="showToast('朗读功能')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <button class="img-action-btn" title="复制" onclick="showToast('已复制')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="img-action-btn" title="收藏" onclick="showToast('已收藏')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="img-action-btn" title="分享" onclick="showToast('分享链接已复制')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <button class="img-action-btn more-btn" title="更多">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+        <button class="img-action-btn" title="赞" onclick="this.style.color='#4a8af4'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+        </button>
+        <button class="img-action-btn" title="踩" onclick="this.style.color='#f44336'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 15V19a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+        </button>
+      </div>
+
+      <div class="chat-separator"></div>
+    </div>
+
+    <!-- Input area -->
+    <div class="chat-input-area">
+      <div class="chat-input-box">
+        <div class="chat-input-top-row">
+          <button class="back-to-drawing" onclick="showToast('返回智慧绘图')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            智慧绘图
+          </button>
+          <textarea class="chat-textarea" id="chatTextarea" rows="1"
+            placeholder="请描述你想生成的图片内容、风格、比例…"
+            oninput="autoResize(this)"></textarea>
+        </div>
+        <div class="chat-input-bottom">
+          <div class="ratio-selector" id="ratioSelector" onclick="toggleRatio('chatRatioDD')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            <span class="ratio-label" id="chatRatioLabel">比例</span>
+            <svg class="ratio-arrow" viewBox="0 0 12 12" width="10" height="10" fill="currentColor"><path d="M2 8l4-4 4 4z"/></svg>
+            <div class="ratio-dropdown" id="chatRatioDD"></div>
+          </div>
+          <div class="chat-input-right-actions">
+            <button class="chat-mic-btn" title="语音输入">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="chat-send-btn" title="生成">
+              <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-disclaimer">内容由AI生成，仅供参考，请仔细甄别</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Prototype Notes -->
+<button class="notes-toggle" onclick="toggleNotes()">?</button>
+<div class="notes-panel" id="notesPanel">
+  <h3>图片详情页改造说明</h3>
+  <div class="note-item"><span class="note-num">1</span><strong>顶部导航栏</strong>：横跨全页顶部，左侧为展开/收起 + 新建对话（侧栏收起时显示），中部为「收藏」「下载」（文字+图标，与原始页面一致），右侧为关闭 ×。去掉了「局部重绘」「一键消除」「文心4.5 Turbo」。</div>
+  <div class="note-item"><span class="note-num">2</span><strong>右侧去掉顶部栏</strong>：右侧对话面板没有独立顶部栏，对话流直接通铺从顶部开始。</div>
+  <div class="note-item"><span class="note-num">3</span><strong>图片预览区背景</strong>：与原始页面保持一致，使用浅色背景 (#f5f6fa)。</div>
+  <div class="note-item"><span class="note-num">4</span><strong>输入框精简</strong>：去掉上传入口和「或上传参考图」文案，保留比例选择器、语音、发送。</div>
+</div>
+
+<script>
+// ===== Ratio options =====
+const ratioOptions = [
+  { ratio: '1:1', label: '1:1 社交头像', w: 22, h: 22 },
+  { ratio: '3:4', label: '3:4 社交媒体', w: 18, h: 24 },
+  { ratio: '4:3', label: '4:3 文章配图', w: 24, h: 18 },
+  { ratio: '9:16', label: '9:16 手机壁纸', w: 14, h: 26 },
+  { ratio: '16:9', label: '16:9 电脑壁纸', w: 26, h: 14 },
+  { ratio: '2:3', label: '2:3 竖版海报', w: 16, h: 24 },
+  { ratio: '3:2', label: '3:2 横版海报', w: 24, h: 16 },
+];
+
+function buildRatioDropdown(containerId) {
+  const dd = document.getElementById(containerId);
+  dd.innerHTML = ratioOptions.map((opt, i) => `
+    <div class="ratio-option${i===0?' active':''}" data-ratio="${opt.ratio}" data-label="${opt.label}"
+         onclick="selectRatio(this, '${containerId}')">
+      <div class="ratio-icon" style="width:${opt.w}px;height:${opt.h}px;">${opt.ratio}</div>
+      <span>${opt.label}</span>
+    </div>
+  `).join('');
+}
+buildRatioDropdown('chatRatioDD');
+
+function toggleRatio(id) {
+  event.stopPropagation();
+  const dd = document.getElementById(id);
+  const selector = document.getElementById('ratioSelector');
+  document.querySelectorAll('.ratio-dropdown').forEach(d => { if (d.id !== id) d.classList.remove('open'); });
+  dd.classList.toggle('open');
+  selector.classList.toggle('open', dd.classList.contains('open'));
+}
+
+function selectRatio(el, ddId) {
+  event.stopPropagation();
+  const dd = document.getElementById(ddId);
+  dd.querySelectorAll('.ratio-option').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  const label = el.dataset.label;
+  document.querySelectorAll('.ratio-label').forEach(lbl => lbl.textContent = label);
+  dd.classList.remove('open');
+  document.getElementById('ratioSelector').classList.remove('open');
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.ratio-dropdown').forEach(d => d.classList.remove('open'));
+  document.getElementById('ratioSelector').classList.remove('open');
+});
+
+// ===== Sidebar toggle =====
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+  document.body.classList.toggle('sidebar-collapsed');
+
+  // When expanding sidebar, deselect "智慧绘图"
+  if (!sidebar.classList.contains('collapsed')) {
+    document.getElementById('sidebarDrawingItem').classList.remove('active');
+  }
+}
+
+// ===== Zoom =====
+let zoomLevel = 100;
+function changeZoom(delta) {
+  zoomLevel = Math.max(50, Math.min(200, zoomLevel + delta));
+  document.getElementById('zoomLabel').textContent = zoomLevel + '%';
+  const img = document.querySelector('.preview-image-area .preview-image-placeholder');
+  if (img) {
+    img.style.transform = `scale(${zoomLevel / 100})`;
+    img.style.transition = 'transform .2s';
+  }
+}
+
+// ===== Auto resize textarea =====
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== Notes =====
+function toggleNotes() {
+  document.getElementById('notesPanel').classList.toggle('open');
+}
+</script>
+</body>
+</html>
